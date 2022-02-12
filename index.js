@@ -1,89 +1,173 @@
-//This is an NPM package that allows me to capture inputs to prompts within the terminal
-const inquirer = require('inquirer');
+const inquirer = require("inquirer");
+const fs = require("fs");
+const Engineer = require("./engineer");
+const Intern = require("./intern");
+const Manager = require("./manager");
 
-//This is an NPM package that allows me to add a file to the file system    
-const fs = require('fs');
+const employees = [];
 
-//This is where the prompts are created. 
-const questions = () =>
-inquirer.prompt(
-    [
-        {
-            type: 'input',
-            message: 'Project Title?',
-            name: 'Title',
+function initApp() {
+    startHtml();
+    addMember();
+}
+
+function startHtml() {
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <title>Team Profile</title>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark bg-dark mb-5">
+            <span class="navbar-brand mb-0 h1 w-100 text-center">Team Profile</span>
+        </nav>
+        <div class="container">
+            <div class="row">`;
+    fs.writeFile("./index.html", html, function(err) {
+        if (err) {
+            console.log(err);
+        }
+    });
+}
+
+function addMember() {
+    inquirer.prompt([{
+        message: "Enter team member's name",
+        name: "name"
+    },
+    {
+        type: "list",
+        message: "Select team member's role",
+        choices: [
+            "Engineer",
+            "Intern",
+            "Manager"
+        ],
+        name: "role"
+    },
+    {
+        message: "Enter team member's id",
+        name: "id"
+    },
+    {
+        message: "Enter team member's email address",
+        name: "email"
+    }])
+    .then(function({name, role, id, email}) {
+        let roleInfo = "";
+        if (role === "Engineer") {
+            roleInfo = "GitHub username";
+        } else if (role === "Intern") {
+            roleInfo = "school name";
+        } else {
+            roleInfo = "office number";
+        }
+        inquirer.prompt([{
+            message: `Enter team member's ${roleInfo}`,
+            name: "roleInfo"
         },
         {
-            type: 'input',
-            message: 'Provide a short description explaining the what, why, and how of your project: ',
-            name: 'Description',
-        },
-        {
-            type: 'input',
-            message: 'How do I use the App?',
-            name: 'Functionality',
-        },
-        {
-            type: 'input',
-            message: 'What are the steps required to install your project?',
-            name: 'Install',
-        },
-        {
-            type: 'input',
-            message: 'Provide instructions and examples for use.',
-            name: 'Usage',
-        },
-        {
-            type: 'input',
-            message: 'List collaborators.',
-            name: 'Credits',
-        },
-        {
-            type: 'input',
-            message: 'GitHub Links',
-            name: 'Links',
-        },
-    ]);
+            type: "list",
+            message: "Would you like to add more team members?",
+            choices: [
+                "yes",
+                "no"
+            ],
+            name: "moreMembers"
+        }])
 
-    //This function creates the formatting for the ReadMe.md file.
-    function generateMD(data){
-        return`# ${data.Title}
+        .then(function({roleInfo, moreMembers}) {
+            let newMember;
+            if (role === "Engineer") {
+                newMember = new Engineer(name, id, email, roleInfo);
+            } else if (role === "Intern") {
+                newMember = new Intern(name, id, email, roleInfo);
+            } else {
+                newMember = new Manager(name, id, email, roleInfo);
+            }
+            employees.push(newMember);
+            addHtml(newMember)
+            .then(function() {
+                if (moreMembers === "yes") {
+                    addMember();
+                } else {
+                    finishHtml();
+                }
+            });
+            
+        });
+    });
+}
 
-        ## Description:
+function addHtml(member) {
+    return new Promise(function(resolve, reject) {
+        const name = member.getName();
+        const role = member.getRole();
+        const id = member.getID();
+        const email = member.getEmail();
+        let data = "";
+        if (role === "Engineer") {
+            const gitHub = member.getGithub();
+            data = `<div class="col-6">
+            <div class="card mx-auto mb-3" style="width: 18rem">
+            <h5 class="card-header">${name}<br /><br />Engineer</h5>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">ID: ${id}</li>
+                <li class="list-group-item">Email Address: <a href = "mailto:"${email}>${email}</a></li>
+                <li class="list-group-item">GitHub: <a href = "https://github.com/${gitHub}/">${gitHub}</a></li>
+            </ul>
+            </div>
+        </div>`;
+        } else if (role === "Intern") {
+            const school = member.getSchool();
+            data = `<div class="col-6">
+            <div class="card mx-auto mb-3" style="width: 18rem">
+            <h5 class="card-header">${name}<br /><br />Intern</h5>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">ID: ${id}</li>
+                <li class="list-group-item">Email Address: <a href = "mailto:"${email}>${email}</a></li>
+                <li class="list-group-item">School: ${school}</li>
+            </ul>
+            </div>
+        </div>`;
+        } else {
+            const officeNum = member.getOfficeNumber();
+            data = `<div class="col-6">
+            <div class="card mx-auto mb-3" style="width: 18rem">
+            <h5 class="card-header">${name}<br /><br />Manager</h5>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">ID: ${id}</li>
+                <li class="list-group-item">Email Address: <a href = "mailto:"${email}>${email}</a></li>
+                <li class="list-group-item">Office Number: ${officeNum}</li>
+            </ul>
+            </div>
+        </div>`
+        }
+        fs.appendFile("./index.html", data, function (err) {
+            if (err) {
+                return reject(err);
+            };
+            return resolve();
+        });
+    });   
+}
 
-        ${data.Description}
+function finishHtml() {
+    const html = ` </div>
+    </div>
+    
+</body>
+</html>`;
 
-        ## Table of Contents:
-        * Functionality
-        * Installation
-        * Usage
-        * Credits
-        * Links
-        
-        ### Functionality:
-
-        \'\'\'${data.Functionality}\'\'\'
-        
-        ### Installation:
-
-        \'\'\'${data.Install}\'\'\'
-
-        ### Usage:
-
-        \'\'\'${data.Usage}\'\'\'
-
-        ### Credits:
-
-        \'\'\'${data.Credits}\'\'\'
-        
-        ### Links:
-
-        \'\'\'${data.Links}\'\'\'`
-    }
-
-    //This will create the README.md file with he prompts and inputs.
-    questions()
-    .then((data) => fs.writeFile('README.md', generateMD(data), function(err){
-        if (err) throw err;
-        console.log("ReadMe created!");
-    }));
+    fs.appendFile("./index.html", html, function (err) {
+        if (err) {
+            console.log(err);
+        };
+    });
+    console.log("end");
+}
+initApp();
